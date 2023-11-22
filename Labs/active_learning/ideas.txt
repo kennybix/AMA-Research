@@ -1,0 +1,6 @@
+Make two different adjustment to the code
+
+1. Filter multiple points from data...to make the learning effective by preventing multiple sampling from the same point
+
+2. Make sure that the expected improvement is thorough
+

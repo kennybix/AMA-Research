@@ -1,0 +1,13 @@
+- if everything goes on well,
+
+1. plot the boxplot of the time it takes to learn for 20 values
+2. convergence
+3. accuracy of resulting model
+
+
+Towards defining effective and robust stopping criterion, we start by looking into the likelihood profiles and try to get enough intuition which can help us with our goal. We propose using multimodal function such as the camelback function. With the function, we will look into the likelihood profile in the hyperparameter space using different sample sizes
+
+It becomes important to be able to define robust stopping criterion for active learning strategies. We start by trying to understand the likelihood plots for a multimodal function such as camelback function.
+
+
+It is important to mention that maximizing the log-likelihood estimate is the same with minimizing the negative log-likelihood estimate. Hence, we will use the terms interchangeably. With the likelihood contour profiles shown in Figure~\ref{fig:chp_6_camelback_likelihood}, the possible likelihood estimate tends to increase greatly with the increase in sample size. With a sample size of 20, a very small likelihood is achievable within the hyperparameter space. However, with increase in the sample size to 30 points, the previous optima region shrinked and there is an emergence of a new optimal region in the contour profile. With further increase in sample size to 40 points, the previous new region became more prominent and a slight shift in the maximum likelihood region to the right. Following another increment in the sample size to 50 points, the disappearance of multiple optimum regions is observed. With 50 sample points, it becomes easier to maximize the likelihood function. 

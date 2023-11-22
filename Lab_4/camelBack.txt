@@ -1,0 +1,4 @@
+Learning time with 0.01 :13.897519588470459
+Learning time with 0.01 :13.725770950317383
+Learning time with 0.01 :28.624442100524902
+Learning time with 0.01 :1327.0579979419708

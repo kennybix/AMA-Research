@@ -1,0 +1,3 @@
+-Extending the stopping criterion to real-world problems
+-Benchmarking to see the effect with Gaussian Process
+-Once everything is set, use SVM too

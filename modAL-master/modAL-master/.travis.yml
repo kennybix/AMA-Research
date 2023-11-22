@@ -1,0 +1,33 @@
+language: "python"
+python:
+  - "3.5"
+  - "3.6"
+
+before_install:
+  - sudo apt-get -qq update
+
+install:
+  - pip install codecov
+  - pip install coverage
+  - pip install .
+
+script:
+  - tests/test.sh
+  - coverage run tests/core_tests.py
+  - coverage report
+
+after_success:
+  - codecov
+
+matrix:
+  include:
+    install:
+      - pip install numpy==1.13 scikit-learn==0.18 scipy==0.18
+      - pip install codecov
+      - pip install coverage
+      - pip install .
+
+branches:
+  only:
+    - master
+    - dev

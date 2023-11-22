@@ -1,0 +1,285 @@
+DEFINE FUNCTION get_more_samples(self):
+
+    
+
+    # generate initial samples, we can even do that using our previous code
+
+    IF (self.DOE=="LHS"):
+
+        SET x_initial_sample TO (lhs.sample(self.dim,self.initial_ns)).T
+
+    ELSEIF (self.DOE=="HS"):
+
+        SET x_initial_sample TO hs.halton_sequence(self.initial_ns,self.dim)
+
+
+
+    # now scale
+
+    SET x_initial_sample TO scaler.scale(x_initial_sample,self.bounds)  
+
+
+
+    # get the corresponding f values       
+
+    SET y_initial_sample TO self.obj_func(x_initial_sample)
+
+
+
+    SET # y_sample TO y_sample.reshape(len(y_sample),1) #single output 
+
+
+
+    SET x_sample TO x_initial_sample
+
+    SET y_sample TO y_initial_sample
+
+
+
+    #initialize the list of f_min 
+
+    SET # maximum_improvement_list TO (np.linspace(1,4,4)).tolist()#improvement_list TO [1.0,2.0,3.0,4.0] 
+
+    SET maximum_improvement_list TO [24,0.0001,1000,1] #random numbers with large variance
+
+    SET theta0 TO [0.01]*self.dim
+
+    SET count TO 0 #initializing count
+
+    SET starting_point TO self.initial_guess
+
+    SET self.y_min TO min(y_sample) #initialization
+
+    SET self.bounds TO np.array(self.bounds)
+
+
+
+    SET perc TO [] #just FOR plotting
+
+    SET self.improvement TO True # initialized
+
+    while(count<self.max_steps): #stopping criteria
+
+        # main task: get new points
+
+        # build surrogate model
+
+        # nelder-mead-c
+
+        SET self.gp_old TO KCORE2.Kriging(x_sample,y_sample,self.kernel,theta0=theta0,optimizer="nelder-mead-c") #initialiize model
+
+        self.gp_old.train() # train model
+
+        # OUTPUT(self.gp_old.likelihood)
+
+        SET # pooled_data TO get_pooled_data(20,self.dim,self.bounds) # get 5 pooled data
+
+        # it seems keeping the pooled data constant is important to the convergence of the active learning model
+
+        SET # model_prediction TO (self.gp_old.predict(pooled_data))[0]
+
+        SET # model_variance TO self.gp_old.predict_variance(pooled_data) #compute model variance
+
+        SET # scaled_model_variance TO self.gp_old.y_scaler.transform(model_variance)
+
+        #using the value of theta IN last training as the initial value to help with faster convergence
+
+        SET # theta0 TO self.gp_old.theta #update the value of theta0 
+
+        SET theta0 TO []
+
+        FOR i IN range(self.dim):
+
+            theta0.append(np.random.uniform(1e-2,5)) #see IF randomizing theta IN each iteration helps
+
+
+
+        # optimize using manual search to get new point
+
+        #choose the starting point randomly within the bound domain
+
+        SET starting_point TO self.get_new_starting_points()
+
+        SET # starting_point TO (np.random.uniform(self.bounds[:, 0], self.bounds[:, 1], size=(1, self.dim)))[0]
+
+        # put a WHILE loop here to ensure that there is no repetition
+
+        # IF minimal point is 0.0 or -0.0, choose new starting position
+
+        SET expected_improvement TO 0.0
+
+        SET ei_array TO (np.linspace(0,30,30)).tolist() #dummy data
+
+        WHILE (expected_improvement EQUALS 0.0):
+
+            SET res TO cNM.constrNM(self.loss_func,starting_point,self.LB,self.UB,full_output=True)
+
+            SET # neg_acq_func TO res['fopt']
+
+            SET expected_improvement TO self.compute_EI(res['xopt'])
+
+            SET ei_array TO push_and_pop(expected_improvement[0],ei_array)
+
+            SET # res1 TO minimize(self.loss_func,starting_point,method='L-BFGS-B',bounds=self.bounds)
+
+            SET # res TO {}
+
+            SET # res['xopt'] TO res1.x 
+
+            SET # neg_acq_func TO res1.fun
+
+            SET # model TO PSO.PSO(self.loss_func,starting_point,self.bounds,num_particles=100,maxiter=30)
+
+            SET # res TO {} #empty dictionary
+
+            SET # res['xopt'] TO model.optimize()
+
+            SET # neg_acq_func TO model.func
+
+            SET starting_point TO self.get_new_starting_points()
+
+            if(np.mean(ei_array)==0): 
+
+                # set stopping criteria to be True
+
+                SET self.improvement TO False
+
+                break
+
+
+
+        IF (self.improvement EQUALS False): break
+
+        SET # maximum_improvement TO -(res['fopt']) #update maximum improvement
+
+        SET x_new TO res['xopt']
+
+        SET # starting_point TO x_new # commenting out to facilitate debugging
+
+        SET x_new TO x_new.reshape(1,self.dim)
+
+        SET y_new TO self.obj_func(x_new)
+
+        SET # maximum_improvement_list TO push_and_pop(maximum_improvement,maximum_improvement_list) #add the new minima to the list
+
+        SET y_new TO y_new.reshape(1,1)
+
+        # check IF the new y is an outlier 
+
+        # IF (check_outlier(y_new,y_sample,m=5)):continue #ensure that outliers don't fit
+
+        # important note --- maybe the outlier detection is more necessary FOR real world data
+
+
+
+        SET y_sample TO y_sample.reshape(len(y_sample),1)
+
+
+
+
+
+        #add new point to existing sample IF it is not an outlier
+
+
+
+        SET x_sample TO np.vstack((x_sample,x_new))
+
+        SET y_sample TO np.vstack((y_sample,y_new))  
+
+
+
+        SET # x_sample, y_sample TO reject_outliers(x_sample,y_sample)
+
+
+
+        SET # self.y_min TO min(y_sample) #update
+
+        count +=1 # move this way up to capture both positive and failed iterations
+
+
+
+
+
+        # attempting to compute the KL_divergence
+
+        # compute gp_new model
+
+        SET self.gp_new TO KCORE2.Kriging(x_sample,y_sample,self.kernel,theta0=theta0,optimizer="nelder-mead-c") #model
+
+        #replacing the nelder-mead-c optimizer with COBYLA to fix negative likelihoods
+
+        self.gp_new.train() # train new model
+
+        SET difference TO compute_percentage_difference(self.gp_old.likelihood,self.gp_new.likelihood)
+
+        perc.append(difference)
+
+        # OUTPUT("Old likelihood: {0:3.2f}, New likelihood: {1:3.2f}. The percentage difference: {2:.3f}" \
+
+            # .format(self.gp_old.likelihood,self.gp_new.likelihood, difference))
+
+        SET maximum_improvement_list TO push_and_pop(difference,maximum_improvement_list)
+
+        # predict
+
+        SET # y_pred TO self.gp_new.predict(x_sample)
+
+        SET # y_var TO self.gp_new.predict_variance(x_sample)
+
+        SET # y_cov TO self.gp_new.cov_y
+
+        SET # pos_new TO [y_pred[0],y_cov]
+
+        SET # prior TO [np.zeros((y_pred[0].shape[0],1)),self.gp_new.R_xx]
+
+        # # compute KL_prior
+
+        SET # KL_prior TO calcKL(pos_new, prior)
+
+
+
+        SET # N TO len(y_sample) - 1 # placed on pos_old
+
+        SET # gp_new TO GaussianProcessRegressor(kernel=kernel, alpha=0.0, optimizer=None).fit(new_INPUT, new_output) # retrain gp to get new priors
+
+        SET # K TO kernel(x_sample, x_sample)
+
+        SET # prior TO [np.zeros(K.shape[0]), K]
+
+        SET # pos_new TO gp_new.predict(x_sample, RETURN_cov=True)
+
+        SET # KL_prior TO calcKL(pos_new, prior)
+
+        SET # E_Qnew TO (((new_output - pos_new[0]) ** 2).sum() + np.trace(pos_new[1])) / (2 * Var * N) - (1 / 2) * np.log(
+
+        #     2 * np.pi * Var)
+
+
+
+        # if(np.var(maximum_improvement_list)<=self.stopping_criteria):break #convergence criteria
+
+        # if(compute_norm_var(maximum_improvement_list)<=self.stopping_criteria):break #convergence criteria\
+
+        # if(max(scaled_model_variance) <= self.stopping_criteria):break #convergence criteria\
+
+        IF (check_criteria(maximum_improvement_list,self.stopping_criteria)): 
+
+            OUTPUT(maximum_improvement_list)
+
+            # delete the extra point
+
+            SET data TO [x_sample,y_sample]
+
+            SET x_sample,y_sample TO remove_extra_entries(data,len(maximum_improvement_list)-1)
+
+            OUTPUT(perc)
+
+            break
+
+    OUTPUT('Total training points: {0}'.format(x_sample.shape[0]))
+
+    SET perc_name TO str((self.obj_func).__name__)
+
+    np.savetxt(perc_name+".csv",perc,delimiter=",")
+
+    RETURN x_sample,y_sample

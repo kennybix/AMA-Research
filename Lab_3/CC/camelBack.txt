@@ -1,0 +1,10 @@
+Learning time with 0.05 :16.185494422912598
+Learning time with 0.05 :17.893420934677124
+Learning time with 0.05 :3.715524196624756
+Learning time with 0.05 :16.98955750465393
+Learning time with 0.05 :94.2506012916565
+Learning time with 0.05 :31.8935604095459
+Learning time with 0.05 :31.707141637802124
+Learning time with 0.05 :31.615163803100586
+Learning time with 0.05 :31.792550802230835
+Learning time with 0.05 :53.99287486076355
